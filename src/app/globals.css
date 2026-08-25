@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --surface-2: #eaf0f8;
+  --ink: #142433;
+  --ink-soft: #4c5c6d;
+  --ink-faint: #7c8ea1;
+  --line: #dde5f0;
+
+  --brand: #1b4d8c;
+  --brand-deep: #102f57;
+  --brand-tint: #e6eefa;
+
+  --good: #0ca30c;
+  --good-tint: #e3f6e3;
+  --neutral-chip: #eef1f5;
+  --neutral-ink: #5a6b7c;
+
+  --eje1: #2a78d6;
+  --eje1-tint: #eaf2fb;
+  --eje1-deep: #18467c;
+  --eje2: #eb6834;
+  --eje2-tint: #fdf0eb;
+  --eje2-deep: #883c1e;
+  --eje3: #1baf7a;
+  --eje3-tint: #e8f7f2;
+  --eje3-deep: #106647;
+  --eje4: #eda100;
+  --eje4-tint: #fdf6e6;
+  --eje4-deep: #895d00;
+  --eje5: #e87ba4;
+  --eje5-tint: #fdf2f6;
+  --eje5-deep: #87475f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-tint: var(--brand-tint);
+  --color-good: var(--good);
+  --color-good-tint: var(--good-tint);
+  --color-neutral-chip: var(--neutral-chip);
+  --color-neutral-ink: var(--neutral-ink);
+  --color-eje1: var(--eje1);
+  --color-eje1-tint: var(--eje1-tint);
+  --color-eje1-deep: var(--eje1-deep);
+  --color-eje2: var(--eje2);
+  --color-eje2-tint: var(--eje2-tint);
+  --color-eje2-deep: var(--eje2-deep);
+  --color-eje3: var(--eje3);
+  --color-eje3-tint: var(--eje3-tint);
+  --color-eje3-deep: var(--eje3-deep);
+  --color-eje4: var(--eje4);
+  --color-eje4-tint: var(--eje4-tint);
+  --color-eje4-deep: var(--eje4-deep);
+  --color-eje5: var(--eje5);
+  --color-eje5-tint: var(--eje5-tint);
+  --color-eje5-deep: var(--eje5-deep);
+  --font-display: var(--font-newsreader), Georgia, serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
 }

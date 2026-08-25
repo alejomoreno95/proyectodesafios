@@ -38,8 +38,14 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthRoute = path.startsWith("/login");
   const isPublicAsset = path.startsWith("/_next") || path.startsWith("/favicon");
+  // /auth/* handles invite & recovery links: Supabase redirects the browser
+  // here with the session token in the URL *fragment*, which never reaches
+  // this server-side check. Gating this route on `user` would bounce the
+  // link to /login before the client JS gets a chance to read the fragment
+  // and establish the session, so it's exempted like /login itself.
+  const isAuthCallback = path.startsWith("/auth/");
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  if (!user && !isAuthRoute && !isPublicAsset && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

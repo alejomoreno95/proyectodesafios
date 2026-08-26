@@ -20,6 +20,14 @@ const ITEMS = [
     label: "Estadísticas",
     icon: "M4 20V10M12 20V4M20 20v-7",
   },
+  {
+    // Para directivos que también dan clase: acceso directo a la vista de
+    // docente para cargar sus propios encuentros. Vive fuera de /admin, así
+    // que al navegar acá se sale por completo de este layout (es esperado).
+    href: "/docente",
+    label: "Cargar encuentro",
+    icon: "M12 5v14M5 12h14",
+  },
 ];
 
 function Icon({ path, rect }: { path: string; rect?: boolean }) {

@@ -2,14 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
-type Estado = "cargando" | "listo" | "invalido" | "guardando" | "hecho";
+type Estado =
+  | "cargando"
+  | "confirmar"
+  | "confirmando"
+  | "listo"
+  | "invalido"
+  | "guardando"
+  | "hecho";
 
 const MENSAJES_ERROR: Record<string, string> = {
   otp_expired: "Este link de invitación venció. Pedile a la escuela que te reenvíe uno nuevo.",
   access_denied: "Este link ya fue usado o no es válido. Pedile a la escuela que te reenvíe la invitación.",
 };
+
+const MENSAJE_GENERICO = "Este link no es válido o venció. Pedile a la escuela que te reenvíe la invitación.";
 
 // Un link vencido o ya usado vuelve con el error en el hash en vez de una
 // sesión. Se lee una sola vez, sincrónicamente, para el estado inicial —
@@ -19,20 +29,43 @@ function leerErrorDelHash(): string | null {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const hashError = hash.get("error_code") ?? hash.get("error");
   if (!hashError) return null;
-  return MENSAJES_ERROR[hashError] ?? "Este link no es válido. Pedile a la escuela que te reenvíe la invitación.";
+  return MENSAJES_ERROR[hashError] ?? MENSAJE_GENERICO;
+}
+
+// El link del mail apunta a esta página con ?token_hash=...&type=invite en
+// vez de directo al endpoint de Supabase — así la verificación (que
+// consume el link, de un solo uso) sólo pasa cuando la persona hace clic
+// en "Activar mi cuenta" acá adentro, nunca por un rastreador de emails
+// que abre el link solo para escanearlo antes de que lo veas vos.
+function leerTokenDeQuery(): { tokenHash: string; type: EmailOtpType } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get("token_hash");
+  const type = params.get("type") as EmailOtpType | null;
+  if (!tokenHash || !type) return null;
+  return { tokenHash, type };
 }
 
 export default function AceptarInvitacionPage() {
   const router = useRouter();
   const errorInicial = leerErrorDelHash();
-  const [estado, setEstado] = useState<Estado>(errorInicial ? "invalido" : "cargando");
+  const tokenInicial = leerTokenDeQuery();
+  const [estado, setEstado] = useState<Estado>(() => {
+    if (errorInicial) return "invalido";
+    if (tokenInicial) return "confirmar";
+    return "cargando";
+  });
   const [error, setError] = useState<string>(errorInicial ?? "");
   const [password, setPassword] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (leerErrorDelHash()) return;
+    // Si ya hay una sesión activa (por ejemplo, un link viejo de otro
+    // formato que el cliente ya procesó solo) saltamos directo al
+    // formulario de contraseña. Si no hay token en la URL ni sesión,
+    // el link está roto.
+    if (errorInicial || tokenInicial) return;
 
     const supabase = createClient();
 
@@ -43,7 +76,6 @@ export default function AceptarInvitacionPage() {
       }
     });
 
-    // Por si la sesión ya estaba lista cuando se montó el efecto.
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         window.history.replaceState(null, "", window.location.pathname);
@@ -54,7 +86,7 @@ export default function AceptarInvitacionPage() {
     const timeout = setTimeout(() => {
       setEstado((actual) => {
         if (actual !== "cargando") return actual;
-        setError("Este link no es válido o venció. Pedile a la escuela que te reenvíe la invitación.");
+        setError(MENSAJE_GENERICO);
         return "invalido";
       });
     }, 5000);
@@ -63,7 +95,32 @@ export default function AceptarInvitacionPage() {
       sub.subscription.unsubscribe();
       clearTimeout(timeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleActivar() {
+    if (!tokenInicial) return;
+    setEstado("confirmando");
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: tokenInicial.tokenHash,
+      type: tokenInicial.type,
+    });
+
+    if (verifyError) {
+      window.history.replaceState(null, "", window.location.pathname);
+      setError(
+        verifyError.message.toLowerCase().includes("expired")
+          ? MENSAJES_ERROR.otp_expired
+          : MENSAJE_GENERICO,
+      );
+      setEstado("invalido");
+      return;
+    }
+
+    window.history.replaceState(null, "", window.location.pathname);
+    setEstado("listo");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,6 +182,22 @@ export default function AceptarInvitacionPage() {
             <p className="rounded-lg bg-eje2-tint px-4 py-3 text-sm font-medium text-eje2-deep">
               {error}
             </p>
+          </div>
+        )}
+
+        {(estado === "confirmar" || estado === "confirmando") && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-ink-soft">
+              ¡Bienvenido/a a Proyecto Desafíos! Tocá el botón para activar tu cuenta.
+            </p>
+            <button
+              type="button"
+              onClick={handleActivar}
+              disabled={estado === "confirmando"}
+              className="mt-2 rounded-full bg-brand px-4 py-4 text-base font-bold text-white disabled:opacity-60"
+            >
+              {estado === "confirmando" ? "Activando…" : "Activar mi cuenta"}
+            </button>
           </div>
         )}
 

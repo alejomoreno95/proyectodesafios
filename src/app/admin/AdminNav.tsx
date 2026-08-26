@@ -21,6 +21,11 @@ const ITEMS = [
     icon: "M4 20V10M12 20V4M20 20v-7",
   },
   {
+    href: "/admin/personal",
+    label: "Personal",
+    icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4.5 20.5a7.5 7.5 0 0115 0",
+  },
+  {
     // Para directivos que también dan clase: acceso directo a la vista de
     // docente para cargar sus propios encuentros. Vive fuera de /admin, así
     // que al navegar acá se sale por completo de este layout (es esperado).

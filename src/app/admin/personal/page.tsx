@@ -37,7 +37,9 @@ export default async function PersonalPage() {
   const [{ data: perfiles }, { data: sessionData }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, full_name, cargo, access_level, active")
+      .select(
+        "id, full_name, cargo, access_level, active, roles, alcance, ver_situaciones_eoe, ver_notas_eoe",
+      )
       .order("access_level", { ascending: false })
       .order("full_name"),
     supabase.auth.getSession(),
@@ -58,6 +60,10 @@ export default async function PersonalPage() {
       email: auth?.email ?? null,
       confirmado: Boolean(auth?.email_confirmed_at),
       ultimo_ingreso: auth?.last_sign_in_at ?? null,
+      roles: p.roles as Persona["roles"],
+      alcance: p.alcance as Persona["alcance"],
+      ver_situaciones_eoe: p.ver_situaciones_eoe,
+      ver_notas_eoe: p.ver_notas_eoe,
     };
   });
 

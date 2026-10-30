@@ -3,6 +3,28 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+// Mismos literales que Role/Alcance en @/lib/auth — se redeclaran acá en
+// vez de importarlos porque ese módulo es "server-only" y este componente
+// corre en el cliente.
+type Role = "docente" | "directivo" | "eoe" | "administrador";
+type Alcance = "Primaria" | "Secundaria" | "Total";
+
+const TODOS_LOS_ROLES: Role[] = ["docente", "directivo", "eoe", "administrador"];
+
+const ROLE_LABELS: Record<Role, string> = {
+  docente: "Docente",
+  directivo: "Directivo",
+  eoe: "EOE",
+  administrador: "Administrador",
+};
+
+const ROLE_STYLES: Record<Role, { background: string; color: string }> = {
+  docente: { background: "var(--neutral-chip)", color: "var(--neutral-ink)" },
+  directivo: { background: "var(--brand-tint)", color: "var(--brand-deep)" },
+  eoe: { background: "var(--eje3-tint)", color: "var(--eje3-deep)" },
+  administrador: { background: "var(--eje2-tint)", color: "var(--eje2-deep)" },
+};
+
 export type Persona = {
   id: string;
   full_name: string;
@@ -12,6 +34,10 @@ export type Persona = {
   email: string | null;
   confirmado: boolean;
   ultimo_ingreso: string | null;
+  roles: Role[];
+  alcance: Alcance;
+  ver_situaciones_eoe: boolean;
+  ver_notas_eoe: boolean;
 };
 
 type ResultadoLink = { nombre: string; email: string; link: string };
@@ -158,6 +184,12 @@ function AgregarPersonaForm({
       email: email.trim(),
       confirmado: false,
       ultimo_ingreso: null,
+      // Mismos valores por defecto que pone el trigger handle_new_user()
+      // al crear la cuenta — se pueden ajustar después editando la fila.
+      roles: rol === "directivo" ? ["docente", "directivo"] : ["docente"],
+      alcance: "Total",
+      ver_situaciones_eoe: false,
+      ver_notas_eoe: false,
     });
     onLink({ nombre: nombre.trim(), email: email.trim(), link: resultado.link });
 
@@ -220,6 +252,12 @@ function AgregarPersonaForm({
         </select>
       </div>
 
+      <p className="text-[12px] text-ink-faint">
+        Después de crearla podés sumarle rol de EOE, administrador, el
+        alcance (Primaria/Secundaria/Total) y los permisos sobre
+        situaciones, editando la fila en la tabla.
+      </p>
+
       {error && (
         <p className="rounded-lg bg-eje2-tint px-3.5 py-2.5 text-[13px] font-medium text-eje2-deep">
           {error}
@@ -275,6 +313,25 @@ function EstadoChip({ persona }: { persona: Persona }) {
   );
 }
 
+function RolesChips({ roles }: { roles: Role[] }) {
+  if (roles.length === 0) {
+    return <span className="text-[12px] text-ink-faint">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {roles.map((r) => (
+        <span
+          key={r}
+          className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+          style={ROLE_STYLES[r]}
+        >
+          {ROLE_LABELS[r]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function PersonaRow({
   persona,
   onCambio,
@@ -288,8 +345,11 @@ function PersonaRow({
   const [nombre, setNombre] = useState(persona.full_name);
   const [email, setEmail] = useState(persona.email ?? "");
   const [cargo, setCargo] = useState(persona.cargo);
-  const [rol, setRol] = useState(persona.access_level);
   const [activa, setActiva] = useState(persona.active);
+  const [roles, setRoles] = useState<Role[]>(persona.roles);
+  const [alcance, setAlcance] = useState<Alcance>(persona.alcance);
+  const [verSituaciones, setVerSituaciones] = useState(persona.ver_situaciones_eoe);
+  const [verNotas, setVerNotas] = useState(persona.ver_notas_eoe);
   const [guardando, setGuardando] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [error, setError] = useState("");
@@ -300,10 +360,17 @@ function PersonaRow({
     setNombre(persona.full_name);
     setEmail(persona.email ?? "");
     setCargo(persona.cargo);
-    setRol(persona.access_level);
     setActiva(persona.active);
+    setRoles(persona.roles);
+    setAlcance(persona.alcance);
+    setVerSituaciones(persona.ver_situaciones_eoe);
+    setVerNotas(persona.ver_notas_eoe);
     setError("");
     setEditando(false);
+  }
+
+  function toggleRole(r: Role) {
+    setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
   }
 
   async function guardar() {
@@ -330,18 +397,35 @@ function PersonaRow({
       }
     }
 
-    // El resto (nombre, cargo, rol, activo) vive en profiles y ya lo puede
-    // tocar directo un directivo activo, gracias a profiles_update_directivo.
+    // access_level sigue siendo el campo legado que usa /admin para dejar
+    // entrar — se mantiene en sincronía con roles acá mismo, igual que lo
+    // hace el trigger handle_new_user() al crear la cuenta.
+    const nuevoAccessLevel: "docente" | "directivo" = roles.includes("directivo")
+      ? "directivo"
+      : "docente";
+    const rolesClave = (arr: Role[]) => [...arr].sort().join(",");
+
+    // El resto (nombre, cargo, roles, alcance, permisos, activo) vive en
+    // profiles y ya lo puede tocar directo un directivo activo, gracias a
+    // profiles_update_directivo.
     const cambiosPerfil: {
       full_name?: string;
       cargo?: string;
       access_level?: string;
       active?: boolean;
+      roles?: Role[];
+      alcance?: Alcance;
+      ver_situaciones_eoe?: boolean;
+      ver_notas_eoe?: boolean;
     } = {};
     if (nombre.trim() !== persona.full_name) cambiosPerfil.full_name = nombre.trim();
     if (cargo.trim() !== persona.cargo) cambiosPerfil.cargo = cargo.trim();
-    if (rol !== persona.access_level) cambiosPerfil.access_level = rol;
     if (activa !== persona.active) cambiosPerfil.active = activa;
+    if (rolesClave(roles) !== rolesClave(persona.roles)) cambiosPerfil.roles = roles;
+    if (nuevoAccessLevel !== persona.access_level) cambiosPerfil.access_level = nuevoAccessLevel;
+    if (alcance !== persona.alcance) cambiosPerfil.alcance = alcance;
+    if (verSituaciones !== persona.ver_situaciones_eoe) cambiosPerfil.ver_situaciones_eoe = verSituaciones;
+    if (verNotas !== persona.ver_notas_eoe) cambiosPerfil.ver_notas_eoe = verNotas;
 
     if (Object.keys(cambiosPerfil).length > 0) {
       const supabase = createClient();
@@ -363,9 +447,13 @@ function PersonaRow({
       ...persona,
       full_name: nombre.trim(),
       cargo: cargo.trim(),
-      access_level: rol,
+      access_level: nuevoAccessLevel,
       active: activa,
       email: email.trim(),
+      roles,
+      alcance,
+      ver_situaciones_eoe: verSituaciones,
+      ver_notas_eoe: verNotas,
     });
   }
 
@@ -386,56 +474,108 @@ function PersonaRow({
   if (editando) {
     return (
       <tr className="border-t border-line bg-brand-tint/40">
-        <td className="px-3 py-2.5" colSpan={5}>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre completo"
-              className="min-w-[160px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
-            />
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              type="email"
-              className="min-w-[180px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
-            />
-            <input
-              value={cargo}
-              onChange={(e) => setCargo(e.target.value)}
-              placeholder="Cargo"
-              className="min-w-[140px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
-            />
-            <select
-              value={rol}
-              onChange={(e) => setRol(e.target.value as "docente" | "directivo")}
-              className="rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
-            >
-              <option value="docente">Docente</option>
-              <option value="directivo">Directivo</option>
-            </select>
-            <label className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+        <td className="px-3 py-3" colSpan={7}>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <input
-                type="checkbox"
-                checked={activa}
-                onChange={(e) => setActiva(e.target.checked)}
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Nombre completo"
+                className="min-w-[160px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
               />
-              Activa
-            </label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                type="email"
+                className="min-w-[180px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              />
+              <input
+                value={cargo}
+                onChange={(e) => setCargo(e.target.value)}
+                placeholder="Cargo"
+                className="min-w-[140px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink"
+              />
+              <label className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={activa}
+                  onChange={(e) => setActiva(e.target.checked)}
+                />
+                Activa
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 border-t border-line/60 pt-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+                  Roles
+                </span>
+                {TODOS_LOS_ROLES.map((r) => (
+                  <label key={r} className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+                    <input
+                      type="checkbox"
+                      checked={roles.includes(r)}
+                      onChange={() => toggleRole(r)}
+                    />
+                    {ROLE_LABELS[r]}
+                  </label>
+                ))}
+              </div>
+
+              <label className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+                  Alcance
+                </span>
+                <select
+                  value={alcance}
+                  onChange={(e) => setAlcance(e.target.value as Alcance)}
+                  className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-[13px] text-ink"
+                >
+                  <option value="Primaria">Primaria</option>
+                  <option value="Secundaria">Secundaria</option>
+                  <option value="Total">Total</option>
+                </select>
+              </label>
+
+              {roles.includes("directivo") && (
+                <div className="flex flex-wrap items-center gap-3 rounded-lg bg-white px-3 py-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+                    Permisos EOE
+                  </span>
+                  <label className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+                    <input
+                      type="checkbox"
+                      checked={verSituaciones}
+                      onChange={(e) => setVerSituaciones(e.target.checked)}
+                    />
+                    Ver situaciones
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[13px] text-ink-soft">
+                    <input
+                      type="checkbox"
+                      checked={verNotas}
+                      onChange={(e) => setVerNotas(e.target.checked)}
+                    />
+                    Ver notas
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={guardar}
                 disabled={guardando}
-                className="rounded-full bg-brand-deep px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-60"
+                className="self-start rounded-full bg-brand-deep px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-60"
               >
                 {guardando ? "Guardando…" : "Guardar"}
               </button>
               <button
                 type="button"
                 onClick={cancelar}
-                className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-faint"
+                className="self-start rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-faint"
               >
                 Cancelar
               </button>
@@ -461,17 +601,9 @@ function PersonaRow({
       </td>
       <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.cargo}</td>
       <td className="px-3 py-3">
-        <span
-          className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          style={
-            persona.access_level === "directivo"
-              ? { background: "var(--brand-tint)", color: "var(--brand-deep)" }
-              : { background: "var(--neutral-chip)", color: "var(--neutral-ink)" }
-          }
-        >
-          {persona.access_level === "directivo" ? "Directivo" : "Docente"}
-        </span>
+        <RolesChips roles={persona.roles} />
       </td>
+      <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.alcance}</td>
       <td className="px-3 py-3">
         <EstadoChip persona={persona} />
       </td>
@@ -552,10 +684,10 @@ export function PersonalClient({
       <AgregarPersonaForm onCreada={agregarPersona} onLink={setLinkActual} />
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-        <table className="w-full min-w-[720px] border-collapse">
+        <table className="w-full min-w-[840px] border-collapse">
           <thead>
             <tr>
-              {["Nombre", "Email", "Cargo", "Rol", "Estado", ""].map((h) => (
+              {["Nombre", "Email", "Cargo", "Roles", "Alcance", "Estado", ""].map((h) => (
                 <th
                   key={h}
                   className="px-3 py-2.5 text-left text-[11.5px] font-bold uppercase tracking-wide text-ink-faint"

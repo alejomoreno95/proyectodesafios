@@ -83,6 +83,7 @@ export function consultaEncuentros(
   let query = supabase
     .from("encounters")
     .select(SELECT_ENCUENTRO)
+    .is("deleted_at", null)
     .order("fecha_encuentro", { ascending: false })
     .order("created_at", { ascending: false });
 

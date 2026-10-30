@@ -17,14 +17,14 @@ export default async function EncuentrosPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireDirectivo();
+  const profile = await requireDirectivo();
   const sp = await searchParams;
   const filtros = leerFiltros(sp);
   const idSeleccionado = typeof sp.id === "string" ? sp.id : "";
 
   const supabase = await createClient();
 
-  const [{ data: encuentros }, { data: cursos }, { data: ejes }, { data: productos }, { data: docentesRaw }] =
+  const [{ data: encuentros }, { data: cursosRaw }, { data: ejes }, { data: productos }, { data: docentesRaw }] =
     await Promise.all([
       consultaEncuentros(supabase, filtros),
       supabase
@@ -36,8 +36,18 @@ export default async function EncuentrosPage({
         .from("products")
         .select("id, nombre, sort_order")
         .order("sort_order"),
-      supabase.from("encounters").select("docente"),
+      supabase.from("encounters").select("docente").is("deleted_at", null),
     ]);
+
+  // El alcance ya protege los datos vía RLS; esto es nada más para no
+  // mostrarle a un directivo de un solo nivel cursos que nunca va a poder
+  // ver resultados de.
+  const cursos =
+    profile.alcance === "Total"
+      ? (cursosRaw ?? [])
+      : (cursosRaw ?? []).filter((c) => c.nivel === profile.alcance);
+  const nivelesDisponibles =
+    profile.alcance === "Total" ? ["Primaria", "Secundaria"] : [profile.alcance];
 
   const filas = encuentros ?? [];
   const docentes = Array.from(
@@ -124,8 +134,11 @@ export default async function EncuentrosPage({
             className="rounded-full border border-line bg-bg px-3.5 py-2.5 text-[13px] text-ink-soft"
           >
             <option value="">Nivel: todos</option>
-            <option value="Primaria">Primaria</option>
-            <option value="Secundaria">Secundaria</option>
+            {nivelesDisponibles.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
           <select
             name="curso"

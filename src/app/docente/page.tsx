@@ -31,12 +31,14 @@ export default async function DocenteInicioPage() {
       .from("encounters")
       .select("id", { count: "exact", head: true })
       .eq("user_id", profile.id)
+      .is("deleted_at", null)
       .gte("fecha_encuentro", monthStart)
       .lt("fecha_encuentro", monthEnd),
     supabase
       .from("encounters")
       .select("fecha_encuentro, courses(display_name), axes(numero, nombre)")
       .eq("user_id", profile.id)
+      .is("deleted_at", null)
       .order("fecha_encuentro", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1)

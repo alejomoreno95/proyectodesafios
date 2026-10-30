@@ -24,6 +24,7 @@ export default async function AdminInicioPage() {
       .select(
         "id, fecha_encuentro, docente, course_id, product_id, axis_id, created_at, courses(display_name), axes(numero, nombre)",
       )
+      .is("deleted_at", null)
       .order("fecha_encuentro", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase.from("axes").select("id, numero, nombre").order("sort_order"),

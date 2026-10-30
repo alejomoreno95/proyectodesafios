@@ -36,7 +36,7 @@ export default async function EncuentrosPage({
         .from("products")
         .select("id, nombre, sort_order")
         .order("sort_order"),
-      supabase.from("encounters").select("docente"),
+      supabase.from("encounters").select("docente").is("deleted_at", null),
     ]);
 
   const filas = encuentros ?? [];

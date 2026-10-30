@@ -34,7 +34,8 @@ export default async function EstadisticasPage() {
     .from("encounters")
     .select(
       "id, fecha_encuentro, docente, course_id, product_id, axis_id, compartido_familia, courses(nivel, display_name), axes(numero, nombre), products(nombre)",
-    );
+    )
+    .is("deleted_at", null);
 
   const { data: ejes } = await supabase
     .from("axes")

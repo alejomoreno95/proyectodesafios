@@ -10,15 +10,17 @@ import { agregarNota, asumirSituacion, cambiarEstadoSituacion, type EstadoSituac
 export type SituacionFila = {
   id: string;
   titulo: string;
-  descripcion: string;
+  descripcion: string | null;
+  tipo: "individual" | "grupal";
+  persona_nombre: string | null;
   estado: string;
-  nivel: string;
+  nivel: string | null;
   created_at: string;
-  course_id: string;
   encounter_id: string | null;
   responsable_id: string | null;
-  courses: { display_name: string; nivel: string } | null;
-  docente: { full_name: string } | null;
+  situacion_cursos: { courses: { display_name: string; nivel: string } | null }[];
+  encounters: { fecha_encuentro: string; courses: { display_name: string } | null } | null;
+  docente: { full_name: string; cargo: string } | null;
   responsable: { full_name: string } | null;
 };
 
@@ -30,6 +32,11 @@ export type Nota = {
 };
 
 const ESTADOS: EstadoSituacion[] = ["Pendiente", "En seguimiento", "Cerrada"];
+
+function cursosLabel(s: SituacionFila): string {
+  const nombres = s.situacion_cursos.map((sc) => sc.courses?.display_name).filter(Boolean);
+  return nombres.length > 0 ? nombres.join(", ") : "—";
+}
 
 function hrefCon(estadoFiltro: string, id?: string): string {
   const params = new URLSearchParams();
@@ -65,7 +72,7 @@ function NotaForm({ situacionId }: { situacionId: string }) {
         value={nota}
         onChange={(e) => setNota(e.target.value)}
         rows={2}
-        placeholder="Agregar una nota breve sobre lo realizado o lo pendiente…"
+        placeholder="¿Qué se hizo o qué queda pendiente?"
         className="w-full resize-none rounded-xl border border-line bg-bg px-3 py-2.5 text-[13.5px] text-ink"
       />
       {error && (
@@ -77,7 +84,7 @@ function NotaForm({ situacionId }: { situacionId: string }) {
         disabled={enviando || !nota.trim()}
         className="self-start rounded-full bg-brand-deep px-4 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
       >
-        {enviando ? "Guardando…" : "Agregar nota"}
+        {enviando ? "Guardando…" : "Agregar actualización"}
       </button>
     </div>
   );
@@ -125,7 +132,7 @@ function PanelDetalle({
       <div className="flex items-start justify-between gap-3">
         <div>
           <span className="font-mono text-xs text-ink-faint">
-            {situacion.courses?.display_name} · {situacion.nivel}
+            {cursosLabel(situacion)} · {situacion.nivel ?? "—"}
           </span>
           <h2 className="mt-0.5 font-display text-xl font-semibold text-ink">
             {situacion.titulo}
@@ -139,6 +146,7 @@ function PanelDetalle({
           <span className="text-ink-faint">Reportada por</span>
           <span className="font-semibold text-ink">
             {situacion.docente?.full_name ?? "—"}
+            {situacion.docente?.cargo ? ` (${situacion.docente.cargo})` : ""}
           </span>
         </div>
         <div className="flex justify-between">
@@ -147,6 +155,23 @@ function PanelDetalle({
             {formatDate(situacion.created_at.slice(0, 10))}
           </span>
         </div>
+        <div className="flex justify-between">
+          <span className="text-ink-faint">Tipo</span>
+          <span className="font-semibold text-ink">
+            {situacion.tipo === "individual"
+              ? situacion.persona_nombre ?? "Individual"
+              : "Grupal"}
+          </span>
+        </div>
+        {situacion.encounters && (
+          <div className="flex justify-between">
+            <span className="text-ink-faint">Encuentro relacionado</span>
+            <span className="font-semibold text-ink">
+              {situacion.encounters.courses?.display_name} ·{" "}
+              {formatDate(situacion.encounters.fecha_encuentro)}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-ink-faint">Responsable</span>
           {situacion.responsable ? (
@@ -168,12 +193,14 @@ function PanelDetalle({
 
       <div className="h-px bg-line" />
 
-      <div>
-        <span className="text-[13px] text-ink-faint">Descripción</span>
-        <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
-          {situacion.descripcion}
-        </p>
-      </div>
+      {situacion.descripcion && (
+        <div>
+          <span className="text-[13px] text-ink-faint">Descripción</span>
+          <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
+            {situacion.descripcion}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[13px] text-ink-faint">Estado</span>
@@ -211,7 +238,7 @@ function PanelDetalle({
 
       <div className="flex flex-col gap-3">
         <span className="text-[13px] text-ink-faint">
-          Notas internas ({notas.length})
+          Historial de trabajo ({notas.length})
         </span>
         <NotaForm situacionId={situacion.id} />
         <div className="flex flex-col gap-2.5">
@@ -293,7 +320,7 @@ export function SituacionesClient({
             <table className="w-full min-w-[480px] border-collapse">
               <thead>
                 <tr>
-                  {["Título", "Curso", "Responsable", "Estado"].map((h) => (
+                  {["Título", "Curso(s)", "Responsable", "Estado"].map((h) => (
                     <th
                       key={h}
                       className="px-3 py-2.5 text-left text-[11.5px] font-bold uppercase tracking-wide text-ink-faint"
@@ -318,7 +345,7 @@ export function SituacionesClient({
                       </td>
                       <td className="border-t border-line px-3 py-3 text-[13.5px]">
                         <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          {s.courses?.display_name}
+                          {cursosLabel(s)}
                         </Link>
                       </td>
                       <td className="border-t border-line px-3 py-3 text-[13.5px]">

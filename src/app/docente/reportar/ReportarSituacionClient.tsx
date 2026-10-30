@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { EstadoBadge } from "@/components/EstadoBadge";
 import { formatDate } from "@/lib/format";
-import { crearSituacion } from "./actions";
+import {
+  crearSituacion,
+  crearSolicitudCapellan,
+  type Motivo,
+  type Tipo,
+} from "./actions";
 
 export type Curso = {
   id: string;
@@ -19,67 +24,138 @@ export type EncuentroOpcion = {
   courses: { display_name: string } | null;
 };
 
-export type Situacion = {
+export type SolicitudFila = {
   id: string;
-  titulo: string;
-  descripcion: string;
+  destinatario: "eoe" | "capellan";
+  tipo: "individual" | "grupal";
+  persona_nombre: string | null;
+  motivo: "confesion" | "charla" | null;
   estado: string;
   created_at: string;
-  course_id: string;
-  courses: { display_name: string } | null;
+  cursos: string[];
+};
+
+const MOTIVO_LABEL: Record<string, string> = {
+  confesion: "Confesión",
+  charla: "Charla",
 };
 
 export function ReportarSituacionClient({
   cursos,
   encuentros,
-  situacionesIniciales,
+  solicitudesIniciales,
+  alcance,
 }: {
   cursos: Curso[];
   encuentros: EncuentroOpcion[];
-  situacionesIniciales: Situacion[];
+  solicitudesIniciales: SolicitudFila[];
+  alcance: "Primaria" | "Secundaria" | "Total";
 }) {
-  const [situaciones, setSituaciones] = useState(situacionesIniciales);
+  const [solicitudes, setSolicitudes] = useState(solicitudesIniciales);
 
-  const [nivel, setNivel] = useState("");
-  const [courseId, setCourseId] = useState("");
-  const [encounterId, setEncounterId] = useState("");
-  const [titulo, setTitulo] = useState("");
+  const puedeCapellan = alcance === "Secundaria" || alcance === "Total";
+
+  const [destinatario, setDestinatario] = useState<"eoe" | "capellan">("eoe");
+  const [cursoIds, setCursoIds] = useState<string[]>([]);
+  const [tipo, setTipo] = useState<Tipo>("grupal");
+  const [personaNombre, setPersonaNombre] = useState("");
+  const [motivo, setMotivo] = useState<Motivo>("charla");
   const [descripcion, setDescripcion] = useState("");
+  const [encounterId, setEncounterId] = useState("");
+  const [avisoCursosQuitados, setAvisoCursosQuitados] = useState(false);
 
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
-  const [exito, setExito] = useState(false);
+  const [exito, setExito] = useState<string>("");
 
-  const niveles = useMemo(
-    () => Array.from(new Set(cursos.map((c) => c.nivel))),
-    [cursos],
+  const cursosPorId = useMemo(() => new Map(cursos.map((c) => [c.id, c])), [cursos]);
+
+  const cursosVisibles = useMemo(
+    () => (destinatario === "capellan" ? cursos.filter((c) => c.nivel === "Secundaria") : cursos),
+    [cursos, destinatario],
   );
-  const cursosDelNivel = useMemo(
-    () => cursos.filter((c) => c.nivel === nivel),
-    [cursos, nivel],
+
+  const nivelesSeleccionados = useMemo(() => {
+    const niveles = new Set<string>();
+    for (const id of cursoIds) {
+      const c = cursosPorId.get(id);
+      if (c) niveles.add(c.nivel);
+    }
+    return niveles;
+  }, [cursoIds, cursosPorId]);
+
+  const avisoAmbosNiveles = destinatario === "eoe" && nivelesSeleccionados.size > 1;
+
+  const encuentrosFiltrados = useMemo(
+    () => encuentros.filter((e) => cursoIds.includes(e.course_id)),
+    [encuentros, cursoIds],
   );
-  const encuentrosDelCurso = useMemo(
-    () => encuentros.filter((e) => e.course_id === courseId),
-    [encuentros, courseId],
-  );
+
+  function elegirDestinatario(d: "eoe" | "capellan") {
+    setDestinatario(d);
+    setError("");
+    if (d === "capellan") {
+      const quitados = cursoIds.filter((id) => cursosPorId.get(id)?.nivel !== "Secundaria");
+      if (quitados.length > 0) {
+        setCursoIds((prev) => prev.filter((id) => cursosPorId.get(id)?.nivel === "Secundaria"));
+        setAvisoCursosQuitados(true);
+      }
+    } else {
+      setAvisoCursosQuitados(false);
+    }
+  }
+
+  function toggleCurso(id: string) {
+    setCursoIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    setEncounterId("");
+    setAvisoCursosQuitados(false);
+  }
+
+  function resetForm() {
+    setDestinatario("eoe");
+    setCursoIds([]);
+    setTipo("grupal");
+    setPersonaNombre("");
+    setMotivo("charla");
+    setDescripcion("");
+    setEncounterId("");
+    setAvisoCursosQuitados(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setExito(false);
+    setExito("");
 
-    if (!courseId || !titulo.trim() || !descripcion.trim()) {
-      setError("Completá curso, título y descripción.");
+    if (cursoIds.length === 0) {
+      setError("Elegí al menos un curso.");
+      return;
+    }
+    if (tipo === "individual" && !personaNombre.trim()) {
+      setError("Completá el nombre de la persona a quien refiere.");
       return;
     }
 
     setEnviando(true);
-    const resultado = await crearSituacion({
-      course_id: courseId,
-      encounter_id: encounterId || null,
-      titulo: titulo.trim(),
-      descripcion: descripcion.trim(),
-    });
+
+    const resultado =
+      destinatario === "eoe"
+        ? await crearSituacion({
+            course_ids: cursoIds,
+            tipo,
+            persona_nombre: tipo === "individual" ? personaNombre.trim() : null,
+            descripcion: descripcion.trim() || null,
+            encounter_id: encounterId || null,
+          })
+        : await crearSolicitudCapellan({
+            course_ids: cursoIds,
+            tipo,
+            persona_nombre: tipo === "individual" ? personaNombre.trim() : null,
+            motivo,
+            descripcion: motivo === "confesion" ? null : descripcion.trim() || null,
+            encounter_id: encounterId || null,
+          });
+
     setEnviando(false);
 
     if (!resultado.ok) {
@@ -87,26 +163,26 @@ export function ReportarSituacionClient({
       return;
     }
 
-    const curso = cursos.find((c) => c.id === courseId);
-    setSituaciones((prev) => [
+    setSolicitudes((prev) => [
       {
         id: `temp-${Date.now()}`,
-        titulo: titulo.trim(),
-        descripcion: descripcion.trim(),
+        destinatario,
+        tipo,
+        persona_nombre: tipo === "individual" ? personaNombre.trim() : null,
+        motivo: destinatario === "capellan" ? motivo : null,
         estado: "Pendiente",
         created_at: new Date().toISOString(),
-        course_id: courseId,
-        courses: curso ? { display_name: curso.display_name } : null,
+        cursos: cursoIds.map((id) => cursosPorId.get(id)?.display_name).filter((n): n is string => Boolean(n)),
       },
       ...prev,
     ]);
 
-    setNivel("");
-    setCourseId("");
-    setEncounterId("");
-    setTitulo("");
-    setDescripcion("");
-    setExito(true);
+    setExito(
+      destinatario === "eoe"
+        ? "Solicitud enviada al Equipo de Orientación Escolar."
+        : "Solicitud enviada al Capellán.",
+    );
+    resetForm();
   }
 
   return (
@@ -116,8 +192,7 @@ export function ReportarSituacionClient({
           Reportar situación
         </h1>
         <p className="mt-1 text-[13.5px] text-ink-soft">
-          Lo que cuentes acá lo recibe el equipo de orientación (EOE), nunca
-          queda público.
+          Elegí a quién va dirigido. Nunca queda público — solo lo ve quien corresponde.
         </p>
       </div>
 
@@ -126,51 +201,169 @@ export function ReportarSituacionClient({
         className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4"
       >
         <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-semibold text-ink-soft">Curso</label>
+          <label className="text-[13px] font-semibold text-ink-soft">Destinatario</label>
           <div className="flex gap-2">
-            {niveles.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => {
-                  setNivel(n);
-                  setCourseId("");
-                  setEncounterId("");
-                }}
-                className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
-                style={
-                  nivel === n
-                    ? { background: "var(--brand)", color: "#fff" }
-                    : {
-                        background: "var(--bg)",
-                        color: "var(--ink-soft)",
-                        border: "1px solid var(--line)",
-                      }
-                }
-              >
-                {n}
-              </button>
+            <button
+              type="button"
+              onClick={() => elegirDestinatario("eoe")}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+              style={
+                destinatario === "eoe"
+                  ? { background: "var(--brand)", color: "#fff" }
+                  : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              }
+            >
+              Equipo de Orientación
+            </button>
+            <button
+              type="button"
+              onClick={() => puedeCapellan && elegirDestinatario("capellan")}
+              disabled={!puedeCapellan}
+              title={puedeCapellan ? undefined : "Disponible solo para Secundaria o Acceso total"}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold disabled:opacity-40"
+              style={
+                destinatario === "capellan"
+                  ? { background: "var(--eje5)", color: "#fff" }
+                  : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              }
+            >
+              Capellán
+            </button>
+          </div>
+          {!puedeCapellan && (
+            <p className="text-[12px] text-ink-faint">
+              La opción Capellán está disponible solo para cuentas con alcance Secundaria o Acceso total.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-ink-soft">
+            {destinatario === "capellan" ? "Curso o cursos (Secundaria)" : "Curso o cursos"}
+          </label>
+          <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-bg p-2.5">
+            {cursosVisibles.length === 0 && (
+              <p className="px-1.5 py-1 text-[13px] text-ink-faint">No hay cursos disponibles.</p>
+            )}
+            {cursosVisibles.map((c) => (
+              <label key={c.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-[14px] text-ink">
+                <input
+                  type="checkbox"
+                  checked={cursoIds.includes(c.id)}
+                  onChange={() => toggleCurso(c.id)}
+                  className="h-4 w-4"
+                />
+                {c.display_name}
+              </label>
             ))}
           </div>
-          <select
-            value={courseId}
-            onChange={(e) => {
-              setCourseId(e.target.value);
-              setEncounterId("");
-            }}
-            disabled={!nivel}
-            className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink disabled:opacity-50"
-          >
-            <option value="">
-              {nivel ? "Elegí el curso" : "Elegí primero el nivel"}
-            </option>
-            {cursosDelNivel.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.display_name}
-              </option>
-            ))}
-          </select>
+          {avisoCursosQuitados && (
+            <p className="rounded-lg bg-eje4-tint px-3 py-2 text-[12.5px] font-medium text-eje4-deep">
+              Quitamos los cursos de Primaria que tenías seleccionados — para Capellán solo se puede elegir Secundaria.
+            </p>
+          )}
+          {avisoAmbosNiveles && (
+            <p className="rounded-lg bg-brand-tint px-3 py-2 text-[12.5px] font-medium text-brand-deep">
+              Esta situación se va a compartir con el EOE de Primaria y de Secundaria, porque involucra cursos de ambos niveles.
+            </p>
+          )}
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-semibold text-ink-soft">Tipo de situación</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTipo("individual")}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+              style={
+                tipo === "individual"
+                  ? { background: "var(--brand)", color: "#fff" }
+                  : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              }
+            >
+              Individual
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipo("grupal")}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+              style={
+                tipo === "grupal"
+                  ? { background: "var(--brand)", color: "#fff" }
+                  : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              }
+            >
+              Grupal
+            </button>
+          </div>
+        </div>
+
+        {tipo === "individual" && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink-soft">
+              Nombre de la persona a quien refiere
+            </label>
+            <input
+              type="text"
+              value={personaNombre}
+              onChange={(e) => setPersonaNombre(e.target.value)}
+              placeholder="Nombre y apellido"
+              className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink"
+            />
+          </div>
+        )}
+
+        {destinatario === "capellan" && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink-soft">Motivo del pedido</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMotivo("confesion")}
+                className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+                style={
+                  motivo === "confesion"
+                    ? { background: "var(--eje5)", color: "#fff" }
+                    : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+                }
+              >
+                Solicitar confesión
+              </button>
+              <button
+                type="button"
+                onClick={() => setMotivo("charla")}
+                className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+                style={
+                  motivo === "charla"
+                    ? { background: "var(--eje5)", color: "#fff" }
+                    : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+                }
+              >
+                Solicitar charla
+              </button>
+            </div>
+          </div>
+        )}
+
+        {destinatario === "capellan" && motivo === "confesion" ? (
+          <p className="rounded-lg bg-eje5-tint px-3.5 py-2.5 text-[13px] font-medium text-eje5-deep">
+            Solo se registrará la solicitud de un encuentro. No escribas acá el contenido de la confesión.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink-soft">
+              Descripción de la situación (opcional)
+            </label>
+            <textarea
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              rows={4}
+              placeholder="Contá lo que viste u observaste, si hace falta"
+              className="w-full resize-none rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink"
+            />
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] font-semibold text-ink-soft">
@@ -179,40 +372,16 @@ export function ReportarSituacionClient({
           <select
             value={encounterId}
             onChange={(e) => setEncounterId(e.target.value)}
-            disabled={!courseId}
+            disabled={cursoIds.length === 0}
             className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink disabled:opacity-50"
           >
             <option value="">Ninguno</option>
-            {encuentrosDelCurso.map((enc) => (
+            {encuentrosFiltrados.map((enc) => (
               <option key={enc.id} value={enc.id}>
                 {formatDate(enc.fecha_encuentro)} — {enc.courses?.display_name}
               </option>
             ))}
           </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-semibold text-ink-soft">Título</label>
-          <input
-            type="text"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Resumen breve de la situación"
-            className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-semibold text-ink-soft">
-            Descripción
-          </label>
-          <textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={5}
-            placeholder="Contá lo que viste u observaste, con el detalle que haga falta"
-            className="w-full resize-none rounded-xl border border-line bg-bg px-3.5 py-3 text-[14.5px] text-ink"
-          />
         </div>
 
         {error && (
@@ -222,7 +391,7 @@ export function ReportarSituacionClient({
         )}
         {exito && (
           <p className="rounded-lg bg-good-tint px-3.5 py-2.5 text-[13px] font-medium" style={{ color: "#0a6e0a" }}>
-            Reporte enviado. El EOE ya lo tiene disponible.
+            {exito}
           </p>
         )}
 
@@ -231,36 +400,38 @@ export function ReportarSituacionClient({
           disabled={enviando}
           className="rounded-full bg-brand px-4 py-3.5 text-[15px] font-bold text-white disabled:opacity-50"
         >
-          {enviando ? "Enviando…" : "Enviar reporte"}
+          {enviando ? "Enviando…" : "Enviar solicitud"}
         </button>
       </form>
 
       <div className="flex flex-col gap-3">
         <span className="pl-0.5 text-xs font-semibold tracking-wide text-ink-faint">
-          MIS REPORTES
+          MIS SOLICITUDES
         </span>
 
-        {situaciones.length === 0 && (
+        {solicitudes.length === 0 && (
           <div className="rounded-2xl border border-line bg-surface px-5 py-7 text-center">
             <p className="text-[14px] text-ink-soft">
-              Todavía no reportaste ninguna situación.
+              Todavía no enviaste ninguna solicitud.
             </p>
           </div>
         )}
 
-        {situaciones.map((s) => (
+        {solicitudes.map((s) => (
           <div
             key={s.id}
             className="flex flex-col gap-1.5 rounded-[14px] border border-line bg-surface px-4 py-[15px]"
           >
             <div className="flex items-start justify-between gap-3">
               <span className="text-[14.5px] font-semibold text-ink">
-                {s.titulo}
+                {s.destinatario === "eoe" ? "Equipo de Orientación" : "Capellán"}
+                {s.motivo ? ` · ${MOTIVO_LABEL[s.motivo]}` : ""}
               </span>
               <EstadoBadge estado={s.estado} />
             </div>
             <span className="text-[13px] text-ink-soft">
-              {s.courses?.display_name}
+              {s.tipo === "individual" ? s.persona_nombre : "Situación grupal"}
+              {s.cursos.length > 0 ? ` · ${s.cursos.join(", ")}` : ""}
             </span>
             <span className="font-mono text-[11.5px] text-ink-faint">
               {formatDate(s.created_at.slice(0, 10))}

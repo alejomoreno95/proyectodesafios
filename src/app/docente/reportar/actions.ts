@@ -4,60 +4,99 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+export type Tipo = "individual" | "grupal";
+export type Motivo = "confesion" | "charla";
+
 export type CrearSituacionPayload = {
-  course_id: string;
+  course_ids: string[];
+  tipo: Tipo;
+  persona_nombre: string | null;
+  descripcion: string | null;
   encounter_id: string | null;
-  titulo: string;
-  descripcion: string;
 };
 
-export type CrearSituacionResult = { ok: true } | { ok: false; error: string };
+export type CrearSolicitudCapellanPayload = {
+  course_ids: string[];
+  tipo: Tipo;
+  persona_nombre: string | null;
+  motivo: Motivo;
+  descripcion: string | null;
+  encounter_id: string | null;
+};
+
+export type CrearSolicitudResult = { ok: true } | { ok: false; error: string };
+
+function validarComun(payload: {
+  course_ids: string[];
+  tipo: Tipo;
+  persona_nombre: string | null;
+}): string | null {
+  if (!payload.course_ids || payload.course_ids.length === 0) {
+    return "Elegí al menos un curso.";
+  }
+  if (payload.tipo === "individual" && !payload.persona_nombre?.trim()) {
+    return "Completá el nombre de la persona a quien refiere.";
+  }
+  return null;
+}
 
 /**
- * Crea una situación reportada por el docente. docente_id y nivel los
- * completa automáticamente un trigger en la base (situaciones_before_insert)
- * a partir del curso elegido — nunca se mandan desde el cliente.
+ * Crea una situación dirigida al EOE. Pasa por crear_situacion_eoe (RPC
+ * SECURITY INVOKER) para que el insert de la situación y el de sus cursos
+ * queden atómicos — la RLS sigue siendo la autoridad real, esto solo evita
+ * dejar una situación "huérfana" sin cursos si algo falla a mitad de camino.
  */
 export async function crearSituacion(
   payload: CrearSituacionPayload,
-): Promise<CrearSituacionResult> {
-  const profile = await requireProfile();
+): Promise<CrearSolicitudResult> {
+  await requireProfile();
 
-  const titulo = payload.titulo?.trim();
-  const descripcion = payload.descripcion?.trim();
-
-  if (!payload.course_id || !titulo || !descripcion) {
-    return { ok: false, error: "Completá curso, título y descripción." };
-  }
+  const error0 = validarComun(payload);
+  if (error0) return { ok: false, error: error0 };
 
   const supabase = await createClient();
-
-  // docente_id y nivel son NOT NULL en la tabla y el trigger
-  // situaciones_before_insert los pisa siempre con el valor correcto
-  // (auth.uid() y el nivel real del curso) — se busca el nivel acá solo
-  // para que el insert quede tipado sin placeholders falsos.
-  const { data: curso } = await supabase
-    .from("courses")
-    .select("nivel")
-    .eq("id", payload.course_id)
-    .single();
-
-  if (!curso) {
-    return { ok: false, error: "El curso elegido no es válido." };
-  }
-
-  const { error } = await supabase.from("situaciones").insert({
-    course_id: payload.course_id,
-    encounter_id: payload.encounter_id,
-    titulo,
-    descripcion,
-    docente_id: profile.id,
-    nivel: curso.nivel,
+  // Los tipos generados marcan estos parámetros como `string` porque
+  // Postgres no distingue "nullable" a nivel de firma de función — en
+  // runtime la RPC los acepta NULL sin problema (ninguno es STRICT).
+  const { error } = await supabase.rpc("crear_situacion_eoe", {
+    p_course_ids: payload.course_ids,
+    p_tipo: payload.tipo,
+    p_persona_nombre: (payload.tipo === "individual" ? payload.persona_nombre!.trim() : null) as string,
+    p_descripcion: (payload.descripcion?.trim() || null) as string,
+    p_encounter_id: payload.encounter_id as string,
   });
 
-  if (error) {
-    return { ok: false, error: "No se pudo enviar el reporte. Probá de nuevo." };
-  }
+  if (error) return { ok: false, error: "No se pudo enviar la solicitud. Probá de nuevo." };
+
+  revalidatePath("/docente/reportar");
+  return { ok: true };
+}
+
+/**
+ * Crea una solicitud al Capellán. Igual que arriba, pero la RPC además
+ * fuerza descripcion = NULL en el servidor cuando el motivo es confesión,
+ * sin importar lo que se haya mandado desde acá — nunca confiamos en el
+ * cliente para eso.
+ */
+export async function crearSolicitudCapellan(
+  payload: CrearSolicitudCapellanPayload,
+): Promise<CrearSolicitudResult> {
+  await requireProfile();
+
+  const error0 = validarComun(payload);
+  if (error0) return { ok: false, error: error0 };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("crear_solicitud_capellan", {
+    p_course_ids: payload.course_ids,
+    p_tipo: payload.tipo,
+    p_persona_nombre: (payload.tipo === "individual" ? payload.persona_nombre!.trim() : null) as string,
+    p_motivo: payload.motivo,
+    p_descripcion: (payload.motivo === "confesion" ? null : payload.descripcion?.trim() || null) as string,
+    p_encounter_id: payload.encounter_id as string,
+  });
+
+  if (error) return { ok: false, error: "No se pudo enviar la solicitud. Probá de nuevo." };
 
   revalidatePath("/docente/reportar");
   return { ok: true };

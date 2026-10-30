@@ -20,6 +20,9 @@ function todayLabel() {
 export default async function DocenteInicioPage() {
   const profile = await requireProfile();
   const esEoe = hasRole(profile, "eoe") || hasRole(profile, "administrador");
+  // El Capellán es el único rol sin bypass de administrador — a propósito,
+  // esto espeja requireCapellan() y la RLS de solicitudes_capellan.
+  const esCapellan = hasRole(profile, "capellan");
   const supabase = await createClient();
 
   const now = new Date();
@@ -143,6 +146,33 @@ export default async function DocenteInicioPage() {
             <div className="text-[15.5px] font-bold text-white">Mesa EOE</div>
             <div className="mt-0.5 text-[13px] text-[#c7d9f2]">
               Situaciones, tareas y encuentros de tu alcance
+            </div>
+          </div>
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </Link>
+      )}
+
+      {esCapellan && (
+        <Link
+          href="/capellan"
+          className="flex items-center justify-between rounded-[18px] px-[22px] py-5"
+          style={{ background: "var(--eje5)" }}
+        >
+          <div>
+            <div className="text-[15.5px] font-bold text-white">Bandeja del Capellán</div>
+            <div className="mt-0.5 text-[13px] text-white/80">
+              Solicitudes privadas de confesión y charla
             </div>
           </div>
           <svg

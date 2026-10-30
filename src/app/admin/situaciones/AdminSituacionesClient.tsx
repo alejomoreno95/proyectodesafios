@@ -5,16 +5,22 @@ import { formatDate } from "@/lib/format";
 export type SituacionFila = {
   id: string;
   titulo: string;
-  descripcion: string;
+  descripcion: string | null;
+  tipo: "individual" | "grupal";
+  persona_nombre: string | null;
   estado: string;
-  nivel: string;
+  nivel: string | null;
   created_at: string;
-  course_id: string;
   responsable_id: string | null;
-  courses: { display_name: string; nivel: string } | null;
-  docente: { full_name: string } | null;
+  situacion_cursos: { courses: { display_name: string; nivel: string } | null }[];
+  docente: { full_name: string; cargo: string } | null;
   responsable: { full_name: string } | null;
 };
+
+function cursosLabel(s: SituacionFila): string {
+  const nombres = s.situacion_cursos.map((sc) => sc.courses?.display_name).filter(Boolean);
+  return nombres.length > 0 ? nombres.join(", ") : "—";
+}
 
 export type Nota = {
   id: string;
@@ -101,7 +107,7 @@ export function AdminSituacionesClient({
             <table className="w-full min-w-[480px] border-collapse">
               <thead>
                 <tr>
-                  {["Título", "Curso", "Responsable", "Estado"].map((h) => (
+                  {["Título", "Curso(s)", "Responsable", "Estado"].map((h) => (
                     <th
                       key={h}
                       className="px-3 py-2.5 text-left text-[11.5px] font-bold uppercase tracking-wide text-ink-faint"
@@ -126,7 +132,7 @@ export function AdminSituacionesClient({
                       </td>
                       <td className="border-t border-line px-3 py-3 text-[13.5px]">
                         <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          {s.courses?.display_name}
+                          {cursosLabel(s)}
                         </Link>
                       </td>
                       <td className="border-t border-line px-3 py-3 text-[13.5px]">
@@ -157,7 +163,7 @@ export function AdminSituacionesClient({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <span className="font-mono text-xs text-ink-faint">
-                    {seleccionada.courses?.display_name} · {seleccionada.nivel}
+                    {cursosLabel(seleccionada)} · {seleccionada.nivel ?? "—"}
                   </span>
                   <h2 className="mt-0.5 font-display text-xl font-semibold text-ink">
                     {seleccionada.titulo}
@@ -171,12 +177,21 @@ export function AdminSituacionesClient({
                   <span className="text-ink-faint">Reportada por</span>
                   <span className="font-semibold text-ink">
                     {seleccionada.docente?.full_name ?? "—"}
+                    {seleccionada.docente?.cargo ? ` (${seleccionada.docente.cargo})` : ""}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-faint">Fecha</span>
                   <span className="font-mono font-semibold text-ink">
                     {formatDate(seleccionada.created_at.slice(0, 10))}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-faint">Tipo</span>
+                  <span className="font-semibold text-ink">
+                    {seleccionada.tipo === "individual"
+                      ? seleccionada.persona_nombre ?? "Individual"
+                      : "Grupal"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -189,12 +204,14 @@ export function AdminSituacionesClient({
 
               <div className="h-px bg-line" />
 
-              <div>
-                <span className="text-[13px] text-ink-faint">Descripción</span>
-                <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
-                  {seleccionada.descripcion}
-                </p>
-              </div>
+              {seleccionada.descripcion && (
+                <div>
+                  <span className="text-[13px] text-ink-faint">Descripción</span>
+                  <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
+                    {seleccionada.descripcion}
+                  </p>
+                </div>
+              )}
 
               <div className="h-px bg-line" />
 

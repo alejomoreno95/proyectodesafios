@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireProfile } from "@/lib/auth";
+import { hasRole, requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EjeChip } from "@/components/EjeChip";
 import { formatDate } from "@/lib/format";
@@ -19,6 +19,7 @@ function todayLabel() {
 
 export default async function DocenteInicioPage() {
   const profile = await requireProfile();
+  const esEoe = hasRole(profile, "eoe") || hasRole(profile, "administrador");
   const supabase = await createClient();
 
   const now = new Date();
@@ -131,6 +132,33 @@ export default async function DocenteInicioPage() {
           <path d="M9 6l6 6-6 6" />
         </svg>
       </Link>
+
+      {esEoe && (
+        <Link
+          href="/eoe"
+          className="flex items-center justify-between rounded-[18px] px-[22px] py-5"
+          style={{ background: "var(--brand-deep)" }}
+        >
+          <div>
+            <div className="text-[15.5px] font-bold text-white">Mesa EOE</div>
+            <div className="mt-0.5 text-[13px] text-[#c7d9f2]">
+              Situaciones, tareas y encuentros de tu alcance
+            </div>
+          </div>
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </Link>
+      )}
 
       {ultimo && (
         <div className="flex flex-col gap-2">

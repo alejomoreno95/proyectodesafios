@@ -6,22 +6,33 @@ import { createClient } from "@/lib/supabase/client";
 // Mismos literales que Role/Alcance en @/lib/auth — se redeclaran acá en
 // vez de importarlos porque ese módulo es "server-only" y este componente
 // corre en el cliente.
-type Role = "docente" | "directivo" | "eoe" | "administrador";
+type Role = "docente" | "directivo" | "eoe" | "administrador" | "preceptor" | "capellan";
 type Alcance = "Primaria" | "Secundaria" | "Total";
 
-const TODOS_LOS_ROLES: Role[] = ["docente", "directivo", "eoe", "administrador"];
+const TODOS_LOS_ROLES: Role[] = [
+  "docente",
+  "preceptor",
+  "directivo",
+  "eoe",
+  "capellan",
+  "administrador",
+];
 
 const ROLE_LABELS: Record<Role, string> = {
   docente: "Docente",
+  preceptor: "Preceptor",
   directivo: "Directivo",
   eoe: "EOE",
+  capellan: "Capellán",
   administrador: "Administrador",
 };
 
 const ROLE_STYLES: Record<Role, { background: string; color: string }> = {
   docente: { background: "var(--neutral-chip)", color: "var(--neutral-ink)" },
+  preceptor: { background: "var(--eje1-tint)", color: "var(--eje1-deep)" },
   directivo: { background: "var(--brand-tint)", color: "var(--brand-deep)" },
   eoe: { background: "var(--eje3-tint)", color: "var(--eje3-deep)" },
+  capellan: { background: "var(--eje5-tint)", color: "var(--eje5-deep)" },
   administrador: { background: "var(--eje2-tint)", color: "var(--eje2-deep)" },
 };
 

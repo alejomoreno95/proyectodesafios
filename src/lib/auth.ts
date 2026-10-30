@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type Role = "docente" | "directivo" | "eoe" | "administrador";
+export type Role = "docente" | "directivo" | "eoe" | "administrador" | "preceptor" | "capellan";
 export type Alcance = "Primaria" | "Secundaria" | "Total";
 
 export type Profile = {
@@ -93,6 +93,23 @@ export async function requireVerSituacionesEoe(): Promise<Profile> {
   const profile = await requireDirectivo();
   if (!profile.ver_situaciones_eoe && !hasRole(profile, "administrador")) {
     redirect("/admin");
+  }
+  return profile;
+}
+
+/**
+ * Bandeja privada del Capellán. A propósito es el único require*() de este
+ * archivo que NO concede bypass a administrador: ni EOE, ni directivos, ni
+ * administradores — ni siquiera con alcance Total — pueden entrar acá, por
+ * más que tengan el rol combinado. Esto espeja exactamente la RLS de
+ * solicitudes_capellan (sin excepción para 'administrador'), así que un
+ * bug en esta función nunca abre una puerta que la base ya cierra, y
+ * viceversa: esta es la primera línea de defensa, la base es la autoridad.
+ */
+export async function requireCapellan(): Promise<Profile> {
+  const profile = await requireProfile();
+  if (!hasRole(profile, "capellan")) {
+    redirect("/docente");
   }
   return profile;
 }

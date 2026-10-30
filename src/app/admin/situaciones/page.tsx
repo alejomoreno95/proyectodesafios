@@ -7,7 +7,7 @@ import {
 } from "./AdminSituacionesClient";
 
 const SELECT_SITUACION =
-  "id, titulo, descripcion, estado, nivel, created_at, course_id, responsable_id, courses(display_name, nivel), docente:profiles!situaciones_docente_id_fkey(full_name), responsable:profiles!situaciones_responsable_id_fkey(full_name)";
+  "id, titulo, descripcion, tipo, persona_nombre, estado, nivel, created_at, responsable_id, situacion_cursos(courses(display_name, nivel)), docente:profiles!situaciones_docente_id_fkey(full_name, cargo), responsable:profiles!situaciones_responsable_id_fkey(full_name)";
 
 const SELECT_NOTA =
   "id, nota, created_at, autor:profiles!situacion_notas_autor_id_fkey(full_name)";

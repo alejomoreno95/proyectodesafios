@@ -6,12 +6,17 @@ import { marcarLeida, marcarTodasLeidas } from "@/app/notificaciones/actions";
 import type { NotificacionFila } from "@/lib/notificaciones";
 
 // A dónde navega cada tipo de notificación:
-// - "actualizacion": el estado de MI situación cambió -> mis reportes.
-// - "nueva_situacion" / "asignacion": algo para la mesa EOE -> el detalle ahí.
+// - "actualizacion": cambió el estado de MI solicitud (al EOE o al
+//   Capellán) -> mis solicitudes, que las muestra unificadas.
+// - "nueva_situacion" / "actualizacion_interna": algo para la mesa EOE ->
+//   el detalle de esa situación ahí.
+// - "nueva_solicitud_capellan": una solicitud nueva en la bandeja privada
+//   del Capellán -> esa bandeja (nunca lleva contenido en el mensaje).
 function hrefPara(n: NotificacionFila): string | null {
-  if (!n.situacion_id) return null;
   if (n.tipo === "actualizacion") return "/docente/reportar";
-  return `/eoe?id=${n.situacion_id}`;
+  if (n.tipo === "nueva_solicitud_capellan") return "/capellan";
+  if (n.situacion_id) return `/eoe?id=${n.situacion_id}`;
+  return null;
 }
 
 function tiempoRelativo(iso: string): string {

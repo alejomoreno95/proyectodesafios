@@ -1,4 +1,4 @@
-import { requireDirectivo } from "@/lib/auth";
+import { hasRole, requireDirectivo } from "@/lib/auth";
 import { logout } from "@/app/logout-action";
 import { AdminNavDesktop, AdminNavMobile } from "./AdminNav";
 
@@ -17,6 +17,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireDirectivo();
+  const mostrarSituaciones = profile.ver_situaciones_eoe || hasRole(profile, "administrador");
 
   return (
     <div className="min-h-dvh md:flex">
@@ -46,7 +47,7 @@ export default async function AdminLayout({
           </div>
         </div>
 
-        <AdminNavDesktop />
+        <AdminNavDesktop mostrarSituaciones={mostrarSituaciones} />
 
         <div className="flex-1" />
 
@@ -127,7 +128,7 @@ export default async function AdminLayout({
         {children}
       </main>
 
-      <AdminNavMobile />
+      <AdminNavMobile mostrarSituaciones={mostrarSituaciones} />
     </div>
   );
 }

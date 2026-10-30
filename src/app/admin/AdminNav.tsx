@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ITEMS = [
+type NavItem = { href: string; label: string; icon: string; rect?: boolean };
+
+const ITEMS_BASE: NavItem[] = [
   {
     href: "/admin",
     label: "Inicio",
@@ -25,15 +27,30 @@ const ITEMS = [
     label: "Personal",
     icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4.5 20.5a7.5 7.5 0 0115 0",
   },
-  {
-    // Para directivos que también dan clase: acceso directo a la vista de
-    // docente para cargar sus propios encuentros. Vive fuera de /admin, así
-    // que al navegar acá se sale por completo de este layout (es esperado).
-    href: "/docente",
-    label: "Cargar encuentro",
-    icon: "M12 5v14M5 12h14",
-  },
 ];
+
+const ITEM_SITUACIONES: NavItem = {
+  href: "/admin/situaciones",
+  label: "Situaciones",
+  icon: "M12 9v4M12 16.5h.01M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
+};
+
+const ITEM_CARGAR_ENCUENTRO: NavItem = {
+  // Para directivos que también dan clase: acceso directo a la vista de
+  // docente para cargar sus propios encuentros. Vive fuera de /admin, así
+  // que al navegar acá se sale por completo de este layout (es esperado).
+  href: "/docente",
+  label: "Cargar encuentro",
+  icon: "M12 5v14M5 12h14",
+};
+
+function construirItems(mostrarSituaciones: boolean): NavItem[] {
+  return [
+    ...ITEMS_BASE,
+    ...(mostrarSituaciones ? [ITEM_SITUACIONES] : []),
+    ITEM_CARGAR_ENCUENTRO,
+  ];
+}
 
 function Icon({ path, rect }: { path: string; rect?: boolean }) {
   return (
@@ -53,11 +70,12 @@ function Icon({ path, rect }: { path: string; rect?: boolean }) {
   );
 }
 
-export function AdminNavDesktop() {
+export function AdminNavDesktop({ mostrarSituaciones }: { mostrarSituaciones: boolean }) {
   const pathname = usePathname();
+  const items = construirItems(mostrarSituaciones);
   return (
     <nav className="flex flex-col gap-[3px]">
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active =
           item.href === "/admin"
             ? pathname === "/admin"
@@ -81,11 +99,12 @@ export function AdminNavDesktop() {
   );
 }
 
-export function AdminNavMobile() {
+export function AdminNavMobile({ mostrarSituaciones }: { mostrarSituaciones: boolean }) {
   const pathname = usePathname();
+  const items = construirItems(mostrarSituaciones);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface px-6 pb-6 pt-3 md:hidden">
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active =
           item.href === "/admin"
             ? pathname === "/admin"

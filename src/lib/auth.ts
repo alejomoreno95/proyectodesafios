@@ -83,3 +83,16 @@ export async function requireEOE(): Promise<Profile> {
   }
   return profile;
 }
+
+/**
+ * Directivo view onto situaciones reportadas al EOE — gated by the
+ * explicit ver_situaciones_eoe permission (never implied by the directivo
+ * role or alcance "Total" alone, per spec). administrador bypasses it.
+ */
+export async function requireVerSituacionesEoe(): Promise<Profile> {
+  const profile = await requireDirectivo();
+  if (!profile.ver_situaciones_eoe && !hasRole(profile, "administrador")) {
+    redirect("/admin");
+  }
+  return profile;
+}

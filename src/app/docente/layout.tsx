@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { logout } from "@/app/logout-action";
+import { obtenerNotificaciones } from "@/lib/notificaciones";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function initials(name: string) {
   return name
@@ -17,6 +19,7 @@ export default async function DocenteLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireProfile();
+  const notificaciones = await obtenerNotificaciones(profile.id);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -31,6 +34,7 @@ export default async function DocenteLayout({
           <span className="font-mono text-xs font-semibold text-ink-faint">CSME</span>
         </Link>
         <div className="flex items-center gap-3">
+          <NotificationBell inicial={notificaciones} />
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-tint text-[13px] font-bold text-brand-deep">
             {initials(profile.full_name)}
           </div>

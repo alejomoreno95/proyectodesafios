@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { hasRole, requireEOE } from "@/lib/auth";
 import { logout } from "@/app/logout-action";
+import { obtenerNotificaciones } from "@/lib/notificaciones";
+import { NotificationBell } from "@/components/NotificationBell";
 import { EoeNav } from "./EoeNav";
 
 function initials(name: string) {
@@ -18,6 +20,7 @@ export default async function EoeLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireEOE();
+  const notificaciones = await obtenerNotificaciones(profile.id);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -47,6 +50,7 @@ export default async function EoeLayout({
               Cargar encuentro
             </Link>
           )}
+          <NotificationBell inicial={notificaciones} />
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-tint text-[13px] font-bold text-brand-deep">
             {initials(profile.full_name)}
           </div>

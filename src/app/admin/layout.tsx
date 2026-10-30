@@ -1,5 +1,7 @@
 import { hasRole, requireDirectivo } from "@/lib/auth";
 import { logout } from "@/app/logout-action";
+import { obtenerNotificaciones } from "@/lib/notificaciones";
+import { NotificationBell } from "@/components/NotificationBell";
 import { AdminNavDesktop, AdminNavMobile } from "./AdminNav";
 
 function initials(name: string) {
@@ -18,6 +20,7 @@ export default async function AdminLayout({
 }) {
   const profile = await requireDirectivo();
   const mostrarSituaciones = profile.ver_situaciones_eoe || hasRole(profile, "administrador");
+  const notificaciones = await obtenerNotificaciones(profile.id);
 
   return (
     <div className="min-h-dvh md:flex">
@@ -110,6 +113,7 @@ export default async function AdminLayout({
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <NotificationBell inicial={notificaciones} />
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-tint text-xs font-bold text-brand-deep">
             {initials(profile.full_name)}
           </div>
@@ -125,6 +129,9 @@ export default async function AdminLayout({
       </header>
 
       <main className="flex-1 overflow-x-hidden px-5 py-6 pb-24 md:px-12 md:py-10 md:pb-10">
+        <div className="mb-4 hidden justify-end md:flex">
+          <NotificationBell inicial={notificaciones} />
+        </div>
         {children}
       </main>
 

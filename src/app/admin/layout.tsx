@@ -91,8 +91,13 @@ export default async function AdminLayout({
       </aside>
 
       {/* Mobile top bar */}
-      <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-4 md:hidden">
-        <div className="flex items-center gap-2.5">
+      <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-4 md:hidden">
+        <div className="flex items-center gap-2">
+          <AdminNavMobile
+            mostrarSituaciones={mostrarSituaciones}
+            fullName={profile.full_name}
+            cargo={profile.cargo}
+          />
           <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] bg-brand">
             <svg
               width="15"
@@ -128,14 +133,12 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <main className="flex-1 overflow-x-hidden px-5 py-6 pb-24 md:px-12 md:py-10 md:pb-10">
+      <main className="flex-1 overflow-x-hidden px-5 py-6 pb-10 md:px-12 md:py-10">
         <div className="mb-4 hidden justify-end md:flex">
           <NotificationBell inicial={notificaciones} />
         </div>
         {children}
       </main>
-
-      <AdminNavMobile mostrarSituaciones={mostrarSituaciones} />
     </div>
   );
 }

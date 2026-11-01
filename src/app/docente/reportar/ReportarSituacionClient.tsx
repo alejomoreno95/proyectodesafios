@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CursoMultiSelect } from "@/components/CursoMultiSelect";
 import { EstadoBadge } from "@/components/EstadoBadge";
 import { formatDate } from "@/lib/format";
 import {
@@ -241,22 +242,12 @@ export function ReportarSituacionClient({
           <label className="text-[13px] font-semibold text-ink-soft">
             {destinatario === "capellan" ? "Curso o cursos (Secundaria)" : "Curso o cursos"}
           </label>
-          <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-bg p-2.5">
-            {cursosVisibles.length === 0 && (
-              <p className="px-1.5 py-1 text-[13px] text-ink-faint">No hay cursos disponibles.</p>
-            )}
-            {cursosVisibles.map((c) => (
-              <label key={c.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-[14px] text-ink">
-                <input
-                  type="checkbox"
-                  checked={cursoIds.includes(c.id)}
-                  onChange={() => toggleCurso(c.id)}
-                  className="h-4 w-4"
-                />
-                {c.display_name}
-              </label>
-            ))}
-          </div>
+          <CursoMultiSelect
+            cursos={cursosVisibles}
+            selectedIds={cursoIds}
+            onToggle={toggleCurso}
+            placeholder={destinatario === "capellan" ? "Elegí uno o más cursos de Secundaria" : "Elegí uno o más cursos"}
+          />
           {avisoCursosQuitados && (
             <p className="rounded-lg bg-eje4-tint px-3 py-2 text-[12.5px] font-medium text-eje4-deep">
               Quitamos los cursos de Primaria que tenías seleccionados — para Capellán solo se puede elegir Secundaria.

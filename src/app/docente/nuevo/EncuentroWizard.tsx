@@ -121,7 +121,13 @@ export function EncuentroWizard({
   const [confirmado, setConfirmado] = useState(false);
 
   const [fecha, setFecha] = useState(todayISO());
-  const [nivel, setNivel] = useState<string>("");
+  // Cuando la cuenta solo tiene un nivel disponible (el caso más común),
+  // se preselecciona directo y no hace falta mostrarle un botón para
+  // elegir entre opciones que no existen.
+  const [nivel, setNivel] = useState<string>(() => {
+    const unicos = Array.from(new Set(cursos.map((c) => c.nivel)));
+    return unicos.length === 1 ? unicos[0] : "";
+  });
   const [courseId, setCourseId] = useState("");
   const [axisId, setAxisId] = useState("");
   const [docente, setDocente] = useState(nombreDocente);
@@ -211,7 +217,7 @@ export function EncuentroWizard({
 
   function registrarOtro() {
     setFecha(todayISO());
-    setNivel("");
+    setNivel(niveles.length === 1 ? niveles[0] : "");
     setCourseId("");
     setAxisId("");
     setDocente(nombreDocente);
@@ -357,30 +363,32 @@ export function EncuentroWizard({
 
         {step === 2 && (
           <div className="flex flex-col gap-4">
-            <div className="flex gap-2">
-              {niveles.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setNivel(n);
-                    setCourseId("");
-                  }}
-                  className="flex-1 rounded-full px-4 py-3 text-sm font-semibold"
-                  style={
-                    nivel === n
-                      ? { background: "var(--brand)", color: "#fff" }
-                      : {
-                          background: "var(--surface)",
-                          color: "var(--ink-soft)",
-                          border: "1px solid var(--line)",
-                        }
-                  }
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+            {niveles.length > 1 && (
+              <div className="flex gap-2">
+                {niveles.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setNivel(n);
+                      setCourseId("");
+                    }}
+                    className="flex-1 rounded-full px-4 py-3 text-sm font-semibold"
+                    style={
+                      nivel === n
+                        ? { background: "var(--brand)", color: "#fff" }
+                        : {
+                            background: "var(--surface)",
+                            color: "var(--ink-soft)",
+                            border: "1px solid var(--line)",
+                          }
+                    }
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
             <select
               value={courseId}
               onChange={(e) => setCourseId(e.target.value)}

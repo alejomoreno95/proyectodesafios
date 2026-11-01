@@ -61,6 +61,8 @@ export function EditarEncuentroForm({
     [cursos, nivel],
   );
 
+
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -126,32 +128,34 @@ export function EditarEncuentroForm({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] font-semibold text-ink-soft">Curso</label>
-          <div className="flex gap-2">
-            {niveles.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => {
-                  setNivel(n);
-                  if (!cursos.find((c) => c.id === courseId && c.nivel === n)) {
-                    setCourseId("");
+          {niveles.length > 1 && (
+            <div className="flex gap-2">
+              {niveles.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setNivel(n);
+                    if (!cursos.find((c) => c.id === courseId && c.nivel === n)) {
+                      setCourseId("");
+                    }
+                  }}
+                  className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
+                  style={
+                    nivel === n
+                      ? { background: "var(--brand)", color: "#fff" }
+                      : {
+                          background: "var(--surface)",
+                          color: "var(--ink-soft)",
+                          border: "1px solid var(--line)",
+                        }
                   }
-                }}
-                className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold"
-                style={
-                  nivel === n
-                    ? { background: "var(--brand)", color: "#fff" }
-                    : {
-                        background: "var(--surface)",
-                        color: "var(--ink-soft)",
-                        border: "1px solid var(--line)",
-                      }
-                }
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
           <select
             value={courseId}
             onChange={(e) => setCourseId(e.target.value)}

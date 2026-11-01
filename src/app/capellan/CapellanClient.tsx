@@ -20,7 +20,11 @@ export type SolicitudCapellanFila = {
   docente: { full_name: string; cargo: string } | null;
 };
 
-const ESTADOS: EstadoSolicitudCapellan[] = ["Pendiente", "En atención", "Finalizado"];
+const ESTADOS_FILTRO: EstadoSolicitudCapellan[] = ["Pendiente", "En atención", "Finalizado", "Realizado"];
+// Charla usa las 3 etapas de siempre; confesión usa solo Pendiente/Realizado
+// — nunca se mezclan, así que cada tarjeta muestra únicamente los botones
+// que le corresponden a su propio motivo.
+const ESTADOS_CHARLA: EstadoSolicitudCapellan[] = ["Pendiente", "En atención", "Finalizado"];
 const MOTIVO_LABEL: Record<string, string> = { confesion: "Confesión", charla: "Charla" };
 
 function hrefCon(estadoFiltro: string): string {
@@ -105,24 +109,43 @@ function Tarjeta({ solicitud }: { solicitud: SolicitudCapellanFila }) {
         </p>
       )}
 
-      <div className="flex gap-2">
-        {ESTADOS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => cambiarEstado(e)}
-            disabled={cambiando}
-            className="flex-1 rounded-full px-3 py-2 text-[12.5px] font-semibold disabled:opacity-50"
-            style={
-              solicitud.estado === e
-                ? { background: "var(--eje5)", color: "#fff" }
-                : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
-            }
-          >
-            {e}
-          </button>
-        ))}
-      </div>
+      {solicitud.motivo === "confesion" ? (
+        // Confesión: solo se registra que el pedido fue atendido, nunca
+        // nada sobre su contenido — un único botón que va y vuelve entre
+        // Pendiente y Realizado, para corregir un toque accidental.
+        <button
+          type="button"
+          onClick={() => cambiarEstado(solicitud.estado === "Realizado" ? "Pendiente" : "Realizado")}
+          disabled={cambiando}
+          className="rounded-full px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+          style={
+            solicitud.estado === "Realizado"
+              ? { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              : { background: "var(--eje5)", color: "#fff" }
+          }
+        >
+          {solicitud.estado === "Realizado" ? "Volver a pendiente" : "Marcar como realizado"}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          {ESTADOS_CHARLA.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => cambiarEstado(e)}
+              disabled={cambiando}
+              className="flex-1 rounded-full px-3 py-2 text-[12.5px] font-semibold disabled:opacity-50"
+              style={
+                solicitud.estado === e
+                  ? { background: "var(--eje5)", color: "#fff" }
+                  : { background: "var(--bg)", color: "var(--ink-soft)", border: "1px solid var(--line)" }
+              }
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && (
         <p className="rounded-lg bg-eje2-tint px-3 py-2 text-[12.5px] font-medium text-eje2-deep">
@@ -161,7 +184,7 @@ export function CapellanClient({
           >
             Todas
           </Link>
-          {ESTADOS.map((e) => (
+          {ESTADOS_FILTRO.map((e) => (
             <Link
               key={e}
               href={hrefCon(e)}

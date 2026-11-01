@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 // Mismos literales que Role/Alcance en @/lib/auth — se redeclaran acá en
@@ -602,47 +602,73 @@ function PersonaRow({
     );
   }
 
+  const acciones = (
+    <div className="flex items-center gap-3">
+      {error && (
+        <span className="text-[11.5px] font-medium text-eje2-deep">{error}</span>
+      )}
+      <button
+        type="button"
+        onClick={reenviarAcceso}
+        disabled={reenviando || esPendiente || !persona.email}
+        title={esPendiente ? "Se puede reenviar una vez que aparezca en el sistema" : undefined}
+        className="whitespace-nowrap text-[12.5px] font-semibold text-brand disabled:opacity-40"
+      >
+        {reenviando ? "Generando…" : "Reenviar acceso"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditando(true)}
+        disabled={esPendiente}
+        className="whitespace-nowrap text-[12.5px] font-semibold text-ink-faint disabled:opacity-40"
+      >
+        Editar
+      </button>
+    </div>
+  );
+
   return (
-    <tr className="border-t border-line">
-      <td className="px-3 py-3 text-[13.5px] font-semibold text-ink">
-        {persona.full_name}
-      </td>
-      <td className="px-3 py-3 text-[13px] text-ink-soft">
-        {persona.email ?? "—"}
-      </td>
-      <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.cargo}</td>
-      <td className="px-3 py-3">
-        <RolesChips roles={persona.roles} />
-      </td>
-      <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.alcance}</td>
-      <td className="px-3 py-3">
-        <EstadoChip persona={persona} />
-      </td>
-      <td className="px-3 py-3">
-        <div className="flex items-center justify-end gap-3">
-          {error && (
-            <span className="text-[11.5px] font-medium text-eje2-deep">{error}</span>
-          )}
-          <button
-            type="button"
-            onClick={reenviarAcceso}
-            disabled={reenviando || esPendiente || !persona.email}
-            title={esPendiente ? "Se puede reenviar una vez que aparezca en el sistema" : undefined}
-            className="whitespace-nowrap text-[12.5px] font-semibold text-brand disabled:opacity-40"
-          >
-            {reenviando ? "Generando…" : "Reenviar acceso"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditando(true)}
-            disabled={esPendiente}
-            className="whitespace-nowrap text-[12.5px] font-semibold text-ink-faint disabled:opacity-40"
-          >
-            Editar
-          </button>
-        </div>
-      </td>
-    </tr>
+    <Fragment>
+      {/* Fila de escritorio */}
+      <tr className="hidden border-t border-line md:table-row">
+        <td className="px-3 py-3 text-[13.5px] font-semibold text-ink">
+          {persona.full_name}
+        </td>
+        <td className="px-3 py-3 text-[13px] text-ink-soft">
+          {persona.email ?? "—"}
+        </td>
+        <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.cargo}</td>
+        <td className="px-3 py-3">
+          <RolesChips roles={persona.roles} />
+        </td>
+        <td className="px-3 py-3 text-[13px] text-ink-soft">{persona.alcance}</td>
+        <td className="px-3 py-3">
+          <EstadoChip persona={persona} />
+        </td>
+        <td className="px-3 py-3">
+          <div className="flex items-center justify-end gap-3">{acciones}</div>
+        </td>
+      </tr>
+      {/* Tarjeta de celular: misma info en forma vertical */}
+      <tr className="border-t border-line md:hidden">
+        <td className="px-4 py-3" colSpan={7}>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-ink">{persona.full_name}</p>
+                <p className="truncate text-[12.5px] text-ink-soft">{persona.email ?? "—"}</p>
+              </div>
+              <EstadoChip persona={persona} />
+            </div>
+            <p className="text-[12.5px] text-ink-soft">
+              {persona.cargo} · {persona.alcance}
+            </p>
+            <RolesChips roles={persona.roles} />
+            <div className="flex flex-wrap items-center gap-3 pt-1">{acciones}</div>
+          </div>
+        </td>
+      </tr>
+    </Fragment>
   );
 }
 
@@ -695,8 +721,8 @@ export function PersonalClient({
       <AgregarPersonaForm onCreada={agregarPersona} onLink={setLinkActual} />
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-        <table className="w-full min-w-[840px] border-collapse">
-          <thead>
+        <table className="w-full min-w-0 border-collapse md:min-w-[840px]">
+          <thead className="hidden md:table-header-group">
             <tr>
               {["Nombre", "Email", "Cargo", "Roles", "Alcance", "Estado", ""].map((h) => (
                 <th

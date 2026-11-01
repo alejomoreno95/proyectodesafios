@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { requireEOE } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EjeChip } from "@/components/EjeChip";
@@ -37,8 +38,8 @@ export default async function EoeEncuentrosPage() {
             Todavía no hay encuentros registrados en tu alcance.
           </p>
         ) : (
-          <table className="w-full min-w-[560px] border-collapse">
-            <thead>
+          <table className="w-full min-w-0 border-collapse md:min-w-[560px]">
+            <thead className="hidden md:table-header-group">
               <tr>
                 {["Fecha", "Curso", "Docente", "Eje", "Producto"].map((h) => (
                   <th
@@ -52,25 +53,42 @@ export default async function EoeEncuentrosPage() {
             </thead>
             <tbody>
               {filas.map((e) => (
-                <tr key={e.id}>
-                  <td className="border-t border-line px-3 py-3 font-mono text-[13px]">
-                    {formatDate(e.fecha_encuentro)}
-                  </td>
-                  <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
-                    {e.courses?.display_name}
-                  </td>
-                  <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                    {e.docente}
-                  </td>
-                  <td className="border-t border-line px-3 py-3">
-                    {e.axes && (
-                      <EjeChip numero={e.axes.numero} nombre={e.axes.nombre} size="sm" />
-                    )}
-                  </td>
-                  <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                    {e.products?.nombre}
-                  </td>
-                </tr>
+                <Fragment key={e.id}>
+                  <tr className="hidden md:table-row">
+                    <td className="border-t border-line px-3 py-3 font-mono text-[13px]">
+                      {formatDate(e.fecha_encuentro)}
+                    </td>
+                    <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
+                      {e.courses?.display_name}
+                    </td>
+                    <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                      {e.docente}
+                    </td>
+                    <td className="border-t border-line px-3 py-3">
+                      {e.axes && (
+                        <EjeChip numero={e.axes.numero} nombre={e.axes.nombre} size="sm" />
+                      )}
+                    </td>
+                    <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                      {e.products?.nombre}
+                    </td>
+                  </tr>
+                  <tr className="border-t border-line md:hidden">
+                    <td className="px-4 py-3" colSpan={5}>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="text-[14px] font-semibold text-ink">{e.courses?.display_name}</span>
+                          <span className="font-mono text-[12px] text-ink-faint">{formatDate(e.fecha_encuentro)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[12.5px] text-ink-soft">
+                          <span>{e.docente}</span>
+                          {e.axes && <EjeChip numero={e.axes.numero} nombre={e.axes.nombre} size="sm" />}
+                        </div>
+                        <span className="text-[12px] text-ink-faint">{e.products?.nombre}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

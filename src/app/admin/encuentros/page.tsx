@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { requireDirectivo } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -264,8 +265,8 @@ export default async function EncuentrosPage({
               No hay encuentros que coincidan con estos filtros.
             </p>
           ) : (
-            <table className="w-full min-w-[560px] border-collapse">
-              <thead>
+            <table className="w-full min-w-0 border-collapse md:min-w-[560px]">
+              <thead className="hidden md:table-header-group">
                 <tr>
                   {["Fecha", "Curso", "Docente", "Eje", "Producto", "Fam."].map(
                     (h) => (
@@ -283,52 +284,74 @@ export default async function EncuentrosPage({
                 {filas.map((e) => {
                   const activo = seleccionado?.id === e.id;
                   return (
-                    <tr key={e.id} style={activo ? { background: "var(--brand-tint)" } : undefined}>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefDetalle(e.id)} className="block font-mono">
-                          {formatDate(e.fecha_encuentro)}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
-                        <Link href={hrefDetalle(e.id)} className="block">
-                          {e.courses?.display_name}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefDetalle(e.id)} className="block">
-                          {e.docente}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefDetalle(e.id)} className="block">
-                          {e.axes && (
-                            <EjeChip
-                              numero={e.axes.numero}
-                              nombre={e.axes.nombre}
-                              size="sm"
-                            />
-                          )}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefDetalle(e.id)} className="block">
-                          {e.products?.nombre}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-center">
-                        <Link href={hrefDetalle(e.id)} className="block">
-                          <span
-                            style={{
-                              color: e.compartido_familia
-                                ? "var(--good)"
-                                : "var(--ink-faint)",
-                            }}
-                          >
-                            ●
-                          </span>
-                        </Link>
-                      </td>
-                    </tr>
+                    <Fragment key={e.id}>
+                      <tr className="hidden md:table-row" style={activo ? { background: "var(--brand-tint)" } : undefined}>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefDetalle(e.id)} className="block font-mono">
+                            {formatDate(e.fecha_encuentro)}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
+                          <Link href={hrefDetalle(e.id)} className="block">
+                            {e.courses?.display_name}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefDetalle(e.id)} className="block">
+                            {e.docente}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefDetalle(e.id)} className="block">
+                            {e.axes && (
+                              <EjeChip
+                                numero={e.axes.numero}
+                                nombre={e.axes.nombre}
+                                size="sm"
+                              />
+                            )}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefDetalle(e.id)} className="block">
+                            {e.products?.nombre}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-center">
+                          <Link href={hrefDetalle(e.id)} className="block">
+                            <span
+                              style={{
+                                color: e.compartido_familia
+                                  ? "var(--good)"
+                                  : "var(--ink-faint)",
+                              }}
+                            >
+                              ●
+                            </span>
+                          </Link>
+                        </td>
+                      </tr>
+                      <tr className="border-t border-line md:hidden" style={activo ? { background: "var(--brand-tint)" } : undefined}>
+                        <td className="px-4 py-3" colSpan={6}>
+                          <Link href={hrefDetalle(e.id)} className="flex flex-col gap-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-[14px] font-semibold text-ink">{e.courses?.display_name}</span>
+                              <span className="font-mono text-[12px] text-ink-faint">{formatDate(e.fecha_encuentro)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[12.5px] text-ink-soft">
+                              <span>{e.docente}</span>
+                              {e.axes && <EjeChip numero={e.axes.numero} nombre={e.axes.nombre} size="sm" />}
+                            </div>
+                            <div className="flex items-center justify-between text-[12px] text-ink-faint">
+                              <span>{e.products?.nombre}</span>
+                              <span style={{ color: e.compartido_familia ? "var(--good)" : "var(--ink-faint)" }}>
+                                {e.compartido_familia ? "Compartido con familia" : "No compartido"}
+                              </span>
+                            </div>
+                          </Link>
+                        </td>
+                      </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>

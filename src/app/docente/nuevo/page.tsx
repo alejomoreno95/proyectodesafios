@@ -6,13 +6,18 @@ export default async function NuevoEncuentroPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
+  let cursosQuery = supabase
+    .from("courses")
+    .select("id, nivel, display_name, sort_order")
+    .eq("active", true)
+    .order("sort_order");
+  if (profile.alcance !== "Total") {
+    cursosQuery = cursosQuery.eq("nivel", profile.alcance);
+  }
+
   const [{ data: cursos }, { data: ejes }, { data: productos }] =
     await Promise.all([
-      supabase
-        .from("courses")
-        .select("id, nivel, display_name, sort_order")
-        .eq("active", true)
-        .order("sort_order"),
+      cursosQuery,
       supabase
         .from("axes")
         .select("id, numero, nombre")

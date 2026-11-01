@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EstadoBadge } from "@/components/EstadoBadge";
@@ -317,8 +317,8 @@ export function SituacionesClient({
               No hay situaciones que coincidan con este filtro.
             </p>
           ) : (
-            <table className="w-full min-w-[480px] border-collapse">
-              <thead>
+            <table className="w-full min-w-0 border-collapse md:min-w-[480px]">
+              <thead className="hidden md:table-header-group">
                 <tr>
                   {["Título", "Curso(s)", "Responsable", "Estado"].map((h) => (
                     <th
@@ -334,31 +334,49 @@ export function SituacionesClient({
                 {situaciones.map((s) => {
                   const activo = seleccionada?.id === s.id;
                   return (
-                    <tr
-                      key={s.id}
-                      style={activo ? { background: "var(--brand-tint)" } : undefined}
-                    >
-                      <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
-                        <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          {s.titulo}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          {cursosLabel(s)}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-[13.5px]">
-                        <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          {s.responsable?.full_name ?? "—"}
-                        </Link>
-                      </td>
-                      <td className="border-t border-line px-3 py-3">
-                        <Link href={hrefCon(estadoFiltro, s.id)} className="block">
-                          <EstadoBadge estado={s.estado} />
-                        </Link>
-                      </td>
-                    </tr>
+                    <Fragment key={s.id}>
+                      {/* Fila de escritorio */}
+                      <tr
+                        className="hidden md:table-row"
+                        style={activo ? { background: "var(--brand-tint)" } : undefined}
+                      >
+                        <td className="border-t border-line px-3 py-3 text-[13.5px] font-semibold">
+                          <Link href={hrefCon(estadoFiltro, s.id)} className="block">
+                            {s.titulo}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefCon(estadoFiltro, s.id)} className="block">
+                            {cursosLabel(s)}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3 text-[13.5px]">
+                          <Link href={hrefCon(estadoFiltro, s.id)} className="block">
+                            {s.responsable?.full_name ?? "—"}
+                          </Link>
+                        </td>
+                        <td className="border-t border-line px-3 py-3">
+                          <Link href={hrefCon(estadoFiltro, s.id)} className="block">
+                            <EstadoBadge estado={s.estado} />
+                          </Link>
+                        </td>
+                      </tr>
+                      {/* Tarjeta de celular: misma info, sin ancho mínimo */}
+                      <tr className="border-t border-line md:hidden" style={activo ? { background: "var(--brand-tint)" } : undefined}>
+                        <td className="px-4 py-3" colSpan={4}>
+                          <Link href={hrefCon(estadoFiltro, s.id)} className="flex flex-col gap-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-[14px] font-semibold text-ink">{s.titulo}</span>
+                              <EstadoBadge estado={s.estado} />
+                            </div>
+                            <span className="text-[12.5px] text-ink-soft">{cursosLabel(s)}</span>
+                            <span className="text-[12px] text-ink-faint">
+                              {s.responsable?.full_name ?? "Sin responsable asignado"}
+                            </span>
+                          </Link>
+                        </td>
+                      </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>

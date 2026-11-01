@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type AccionResult = { ok: true } | { ok: false; error: string };
 
-export type EstadoSolicitudCapellan = "Pendiente" | "En atención" | "Finalizado";
+export type EstadoSolicitudCapellan = "Pendiente" | "En atención" | "Finalizado" | "Realizado";
 
 /**
  * Cambia el estado de una solicitud al Capellán. requireCapellan() no tiene
